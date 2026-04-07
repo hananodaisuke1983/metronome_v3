@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>奇数拍子メトロノーム</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;700;800&display=swap');
+:root {
+  --bg:#0a0a0f; --surface:#13131a; --surface2:#1c1c27; --surface3:#22222f;
+  --border:rgba(255,255,255,0.08); --border2:rgba(255,255,255,0.14);
+  --accent:#4f8cff; --accent-dim:rgba(79,140,255,0.18); --accent-border:rgba(79,140,255,0.55);
+  --strong:#ff6b6b; --strong-dim:rgba(255,107,107,0.18); --strong-border:rgba(255,107,107,0.55);
+  --mid:#ffc947; --mid-dim:rgba(255,201,71,0.15); --mid-border:rgba(255,201,71,0.5);
+  --bass:#34d399; --bass-dim:rgba(52,211,153,0.15); --bass-border:rgba(52,211,153,0.5);
+  --text:#f0f0f8; --text2:#8888a8; --text3:#4a4a65;
+  --radius:14px; --radius-sm:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh;min-height:-webkit-fill-available}
+.app{max-width:500px;margin:0 auto;padding:18px 14px 48px}
+header{margin-bottom:20px}
+header h1{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--text);letter-spacing:-0.5px;line-height:1}
+header p{font-size:11px;color:var(--text3);margin-top:4px;letter-spacing:0.5px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px}
+.sec-label{font-size:9px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;font-weight:500}
+.meter-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.meter-btn{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 3px 7px;text-align:center;cursor:pointer;transition:all .12s;-webkit-user-select:none}
+.meter-btn:active{transform:scale(.93)}
+.meter-btn.active{background:var(--accent-dim);border-color:var(--accent-border)}
+.meter-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text);line-height:1}
+.meter-btn.active .meter-name{color:var(--accent)}
+.meter-pat{font-size:8px;color:var(--text3);margin-top:3px;line-height:1.3}
+.meter-btn.active .meter-pat{color:rgba(79,140,255,.65)}
+.bpm-row{display:flex;align-items:baseline;gap:6px;margin-bottom:12px}
+.bpm-num{font-family:'Syne',sans-serif;font-size:50px;font-weight:800;color:var(--text);letter-spacing:-2px;line-height:1}
+.bpm-unit{font-size:13px;color:var(--text2)}
+input[type=range]{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:var(--surface2);outline:none;margin-bottom:10px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 0 3px rgba(79,140,255,.2)}
+.tempo-presets{display:flex;gap:5px;margin-top:2px}
+.tp{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 2px;font-size:11px;color:var(--text2);text-align:center;cursor:pointer;font-family:'DM Mono',monospace;-webkit-user-select:none}
+.tp:active{transform:scale(.92)}
+
+/* Bass section */
+.bass-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.bass-title{display:flex;align-items:center;gap:8px}
+.bass-dot{width:10px;height:10px;border-radius:50%;background:var(--bass);flex-shrink:0}
+.toggle-wrap{display:flex;align-items:center;gap:8px}
+.toggle-label{font-size:11px;color:var(--text2)}
+.toggle{position:relative;width:44px;height:24px;cursor:pointer;-webkit-user-select:none;flex-shrink:0}
+.toggle input{display:none}
+.toggle-track{position:absolute;inset:0;border-radius:12px;background:var(--surface3);border:1px solid var(--border2);transition:all .2s}
+.toggle input:checked~.toggle-track{background:var(--bass-dim);border-color:var(--bass-border)}
+.toggle-thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--text3);transition:all .2s}
+.toggle input:checked~.toggle-thumb{left:23px;background:var(--bass)}
+
+.bass-measures{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;margin-bottom:10px}
+.bass-measures::-webkit-scrollbar{display:none}
+.measure-chip{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;-webkit-user-select:none;flex-shrink:0;transition:all .12s;min-width:54px;text-align:center}
+.measure-chip:active{transform:scale(.93)}
+.measure-chip.active{background:var(--bass-dim);border-color:var(--bass-border)}
+.measure-chip.playing-now{background:var(--bass);border-color:var(--bass)}
+.mc-num{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--text2);line-height:1}
+.measure-chip.active .mc-num{color:var(--bass)}
+.measure-chip.playing-now .mc-num{color:#fff}
+.mc-sig{font-size:9px;color:var(--text3);margin-top:2px}
+.measure-chip.active .mc-sig{color:rgba(52,211,153,.65)}
+.measure-chip.playing-now .mc-sig{color:rgba(255,255,255,.8)}
+
+.bass-mode-row{display:flex;gap:6px;margin-bottom:10px}
+.bass-mode-btn{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 4px;font-size:10px;color:var(--text2);text-align:center;cursor:pointer;-webkit-user-select:none;transition:all .12s}
+.bass-mode-btn:active{transform:scale(.93)}
+.bass-mode-btn.active{background:var(--bass-dim);border-color:var(--bass-border);color:var(--bass)}
+
+.bass-info{font-size:10px;color:var(--text3);line-height:1.6}
+.bass-info span{color:var(--text2)}
+
+/* Waveform selector */
+.wave-row{display:flex;gap:5px;margin-bottom:10px}
+.wave-btn{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 4px;font-size:10px;color:var(--text2);text-align:center;cursor:pointer;-webkit-user-select:none;transition:all .12s}
+.wave-btn.active{background:var(--bass-dim);border-color:var(--bass-border);color:var(--bass)}
+.wave-btn:active{transform:scale(.93)}
+
+/* Volume */
+.vol-row{display:flex;align-items:center;gap:10px;margin-bottom:2px}
+.vol-label{font-size:10px;color:var(--text3);min-width:36px}
+input.vol-slider{margin-bottom:0;height:3px}
+input.vol-slider::-webkit-slider-thumb{width:18px;height:18px;background:var(--bass);box-shadow:0 0 0 3px rgba(52,211,153,.2)}
+
+/* Accent editor */
+.accent-legend{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text2)}
+.legend-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.legend-dot.strong{background:var(--strong)}
+.legend-dot.mid{background:var(--mid)}
+.legend-dot.normal{background:var(--surface3);border:1px solid var(--border2)}
+.beat-editor{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px;align-items:flex-start}
+.be-beat{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;-webkit-user-select:none}
+.be-circle{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;transition:all .12s;border:1.5px solid var(--border2);background:var(--surface2);color:var(--text3)}
+.be-beat.strong .be-circle{background:var(--strong-dim);border-color:var(--strong-border);color:var(--strong)}
+.be-beat.mid .be-circle{background:var(--mid-dim);border-color:var(--mid-border);color:var(--mid)}
+.be-beat.normal .be-circle{background:var(--surface2);border-color:var(--border2);color:var(--text2)}
+.be-beat.active .be-circle{transform:scale(1.18);box-shadow:0 0 14px rgba(79,140,255,.5)}
+.be-beat.active.strong .be-circle{background:var(--strong)!important;color:#fff!important;border-color:var(--strong)!important}
+.be-beat.active.mid .be-circle{background:var(--mid)!important;color:#1a1a00!important;border-color:var(--mid)!important}
+.be-beat.active.normal .be-circle{background:var(--accent)!important;color:#fff!important;border-color:var(--accent)!important}
+.be-beat.bass-on .be-circle{box-shadow:0 0 8px rgba(52,211,153,.6)}
+.be-num{font-size:9px;color:var(--text3)}
+.beat-sep-v{width:1px;height:40px;background:var(--border2);align-self:center;flex-shrink:0}
+.group-controls{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.gc-label{font-size:9px;color:var(--text3);width:100%;letter-spacing:1px;text-transform:uppercase}
+.preset-scroll{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.preset-scroll::-webkit-scrollbar{display:none}
+.preset-chip{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-size:10px;color:var(--text2);cursor:pointer;white-space:nowrap;-webkit-user-select:none;font-family:'DM Mono',monospace;transition:all .12s;flex-shrink:0}
+.preset-chip:active{transform:scale(.93)}
+.preset-chip.active{background:var(--accent-dim);border-color:var(--accent-border);color:var(--accent)}
+.cycle-hint{font-size:10px;color:var(--text3);margin-top:6px;line-height:1.6}
+.cycle-hint span{color:var(--text2)}
+.info-row{display:flex;gap:7px;margin-bottom:14px}
+.info-card{flex:1;background:var(--surface2);border-radius:var(--radius-sm);padding:9px 6px;text-align:center}
+.ic-label{font-size:8px;letter-spacing:1px;color:var(--text3);text-transform:uppercase;margin-bottom:3px}
+.ic-val{font-family:'Syne',sans-serif;font-size:19px;font-weight:700;color:var(--text)}
+.ic-val.sm{font-size:11px;font-family:'DM Mono',monospace;line-height:1.4}
+.sub-row{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px}
+.sub-dot{width:7px;height:7px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);transition:background .05s;flex-shrink:0}
+.sub-dot.on{background:var(--accent);border-color:var(--accent)}
+.btn-row{display:flex;gap:10px}
+.play-btn{flex:2;height:58px;border-radius:var(--radius);background:var(--accent);border:none;color:#fff;font-family:'Syne',sans-serif;font-size:18px;font-weight:700;cursor:pointer;transition:all .12s;-webkit-user-select:none}
+.play-btn:active{transform:scale(.96)}
+.play-btn.playing{background:var(--surface2);border:1px solid var(--border2);color:var(--text2)}
+.tap-btn{flex:1;height:58px;border-radius:var(--radius);background:var(--surface2);border:1px solid var(--border2);color:var(--text2);font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .12s;-webkit-user-select:none}
+.tap-btn:active{transform:scale(.93)}
+@keyframes ring{0%{box-shadow:0 0 0 0 rgba(79,140,255,.6)}70%{box-shadow:0 0 0 10px rgba(79,140,255,0)}100%{box-shadow:0 0 0 0 rgba(79,140,255,0)}}
+.pulse-anim{animation:ring .28s ease-out}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <h1>奇数拍子 Metronome</h1>
+  <p>Advanced Rhythmic Concepts — Bass Pattern Sync</p>
+</header>
+
+<!-- Meter -->
+<div class="card">
+  <div class="sec-label">拍子記号</div>
+  <div class="meter-grid" id="meterGrid"></div>
+</div>
+
+<!-- BPM -->
+<div class="card">
+  <div class="sec-label">テンポ</div>
+  <div class="bpm-row"><span class="bpm-num" id="bpmNum">100</span><span class="bpm-unit">BPM</span></div>
+  <input type="range" id="bpmSlider" min="40" max="240" step="1" value="100">
+  <div class="tempo-presets">
+    <div class="tp" onclick="setBpm(60)">60</div>
+    <div class="tp" onclick="setBpm(80)">80</div>
+    <div class="tp" onclick="setBpm(100)">100</div>
+    <div class="tp" onclick="setBpm(120)">120</div>
+    <div class="tp" onclick="setBpm(160)">160</div>
+    <div class="tp" onclick="setBpm(200)">200</div>
+  </div>
+</div>
+
+<!-- Bass Pattern -->
+<div class="card">
+  <div class="bass-header">
+    <div class="bass-title">
+      <div class="bass-dot"></div>
+      <span class="sec-label" style="margin-bottom:0">ベースパターン (caravan 74)</span>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" id="bassToggle" onchange="toggleBass()">
+      <div class="toggle-track"></div>
+      <div class="toggle-thumb"></div>
+    </label>
+  </div>
+
+  <div class="bass-mode-row">
+    <div class="bass-mode-btn active" id="bm_single" onclick="setBassMode('single')">小節選択</div>
+    <div class="bass-mode-btn" id="bm_loop" onclick="setBassMode('loop')">ループ再生</div>
+    <div class="bass-mode-btn" id="bm_seq" onclick="setBassMode('seq')">順番に再生</div>
+  </div>
+
+  <div class="bass-measures" id="bassMeasures"></div>
+
+  <div class="wave-row">
+    <div class="wave-btn active" id="wv_sine" onclick="setWave('sine')">Sine</div>
+    <div class="wave-btn" id="wv_triangle" onclick="setWave('triangle')">Triangle</div>
+    <div class="wave-btn" id="wv_sawtooth" onclick="setWave('sawtooth')">Saw</div>
+    <div class="wave-btn" id="wv_square" onclick="setWave('square')">Square</div>
+  </div>
+
+  <div class="vol-row">
+    <span class="vol-label">音量</span>
+    <input type="range" class="vol-slider" id="bassVol" min="0" max="100" step="1" value="60">
+    <span style="font-size:10px;color:var(--text3)" id="bassVolNum">60</span>
+  </div>
+
+  <div class="bass-info" id="bassInfo">小節を選択してONにすると、メトロノームと同期して再生されます。</div>
+</div>
+
+<!-- Accent Editor -->
+<div class="card">
+  <div class="sec-label">アクセント エディター</div>
+  <div class="accent-legend">
+    <div class="legend-item"><div class="legend-dot strong"></div>強拍 (●)</div>
+    <div class="legend-item"><div class="legend-dot mid"></div>中拍 (◉)</div>
+    <div class="legend-item"><div class="legend-dot normal"></div>弱拍 (○)</div>
+    <div style="font-size:10px;color:var(--text3);margin-left:auto">タップで切替</div>
+  </div>
+  <div class="beat-editor" id="beatEditor"></div>
+  <div class="group-controls">
+    <div class="gc-label">グループ プリセット（教材収録パターン）</div>
+    <div id="presetChips" class="preset-scroll"></div>
+  </div>
+  <div class="cycle-hint" id="cycleHint"></div>
+</div>
+
+<!-- Visualizer -->
+<div class="card">
+  <div class="sec-label">演奏ビジュアライザー</div>
+  <div class="sub-row" id="subRow"></div>
+  <div class="info-row">
+    <div class="info-card"><div class="ic-label">拍</div><div class="ic-val" id="curBeatDisp">—</div></div>
+    <div class="info-card"><div class="ic-label">拍子</div><div class="ic-val" id="meterDisp">5/4</div></div>
+    <div class="info-card"><div class="ic-label">小節</div><div class="ic-val" id="measureDisp">—</div></div>
+  </div>
+  <div class="btn-row">
+    <button class="play-btn" id="playBtn" onclick="togglePlay()">▶ 開始</button>
+    <button class="tap-btn" onclick="tapTempo()">TAP</button>
+  </div>
+</div>
+</div>
+
+<script>
+// =====================================================================
+// SCORE DATA (caravan 74 — parsed from .mscz)
+// =====================================================================
+const SCORE_MEASURES = [{"measure":1,"sig":"7/4","beats":7,"denom":4,"notes":[{"beatPos":0.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":1.5,"durBeats":1.5,"pitch":56,"freq":207.65,"name":"Ab3"},{"beatPos":3.0,"durBeats":1.0,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":4.5,"durBeats":0.5,"pitch":56,"freq":207.65,"name":"Ab3"},{"beatPos":5.5,"durBeats":0.5,"pitch":63,"freq":311.13,"name":"Eb4"},{"beatPos":6.0,"durBeats":0.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":6.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"}]},{"measure":2,"sig":"7/4","beats":7,"denom":4,"notes":[{"beatPos":0.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":1.5,"durBeats":1.5,"pitch":56,"freq":207.65,"name":"Ab3"},{"beatPos":3.0,"durBeats":1.0,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":4.5,"durBeats":0.5,"pitch":56,"freq":207.65,"name":"Ab3"},{"beatPos":5.5,"durBeats":0.5,"pitch":63,"freq":311.13,"name":"Eb4"},{"beatPos":6.0,"durBeats":0.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":6.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"}]},{"measure":3,"sig":"7/4","beats":7,"denom":4,"notes":[{"beatPos":0.0,"durBeats":0.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":1.5,"durBeats":1.5,"pitch":56,"freq":207.65,"name":"Ab3"},{"beatPos":3.5,"durBeats":1.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":5.0,"durBeats":1.0,"pitch":56,"freq":207.65,"name":"Ab3"},{"beatPos":6.0,"durBeats":0.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":6.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"}]},{"measure":4,"sig":"7/4","beats":7,"denom":4,"notes":[{"beatPos":0.0,"durBeats":0.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":1.5,"durBeats":1.5,"pitch":56,"freq":207.65,"name":"Ab3"},{"beatPos":3.5,"durBeats":1.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":5.0,"durBeats":1.0,"pitch":56,"freq":207.65,"name":"Ab3"},{"beatPos":6.0,"durBeats":0.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":6.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"}]},{"measure":5,"sig":"7/4","beats":7,"denom":4,"notes":[{"beatPos":0.0,"durBeats":1.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":1.5,"durBeats":1.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":3.0,"durBeats":1.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":4.5,"durBeats":1.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":6.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"}]},{"measure":6,"sig":"7/4","beats":7,"denom":4,"notes":[{"beatPos":0.5,"durBeats":1.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":2.0,"durBeats":1.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":3.5,"durBeats":1.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":5.0,"durBeats":1.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":6.5,"durBeats":0.5,"pitch":58,"freq":233.08,"name":"Bb3"}]},{"measure":7,"sig":"7/4","beats":7,"denom":4,"notes":[{"beatPos":1.0,"durBeats":1.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":2.5,"durBeats":0.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":3.5,"durBeats":1.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":5.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":6.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"}]},{"measure":8,"sig":"7/4","beats":7,"denom":4,"notes":[{"beatPos":0.5,"durBeats":0.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":1.5,"durBeats":1.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":3.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":4.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":5.0,"durBeats":1.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":6.5,"durBeats":0.5,"pitch":58,"freq":233.08,"name":"Bb3"}]},{"measure":9,"sig":"7/4","beats":7,"denom":4,"notes":[{"beatPos":0.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":1.5,"durBeats":1.5,"pitch":56,"freq":207.65,"name":"Ab3"},{"beatPos":3.0,"durBeats":1.0,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":4.5,"durBeats":1.0,"pitch":56,"freq":207.65,"name":"Ab3"},{"beatPos":6.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"}]},{"measure":10,"sig":"5/4","beats":5,"denom":4,"notes":[{"beatPos":0.0,"durBeats":1.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":1.5,"durBeats":1.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":3.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":4.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"}]},{"measure":11,"sig":"7/4","beats":7,"denom":4,"notes":[]},{"measure":12,"sig":"9/4","beats":9,"denom":4,"notes":[{"beatPos":0.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":1.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":3.0,"durBeats":1.5,"pitch":65,"freq":349.23,"name":"F4"},{"beatPos":4.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":5.0,"durBeats":1.0,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":6.5,"durBeats":1.0,"pitch":65,"freq":349.23,"name":"F4"},{"beatPos":8.0,"durBeats":1.0,"pitch":65,"freq":349.23,"name":"F4"}]},{"measure":13,"sig":"9/4","beats":9,"denom":4,"notes":[{"beatPos":0.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":1.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":2.5,"durBeats":1.5,"pitch":65,"freq":349.23,"name":"F4"},{"beatPos":4.5,"durBeats":0.5,"pitch":63,"freq":311.13,"name":"Eb4"},{"beatPos":5.5,"durBeats":0.5,"pitch":65,"freq":349.23,"name":"F4"},{"beatPos":6.0,"durBeats":1.0,"pitch":65,"freq":349.23,"name":"F4"},{"beatPos":7.5,"durBeats":0.5,"pitch":67,"freq":392.0,"name":"G4"},{"beatPos":8.0,"durBeats":0.5,"pitch":63,"freq":311.13,"name":"Eb4"},{"beatPos":8.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"}]},{"measure":14,"sig":"9/4","beats":9,"denom":4,"notes":[{"beatPos":0.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":1.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":2.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":3.5,"durBeats":1.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":5.5,"durBeats":0.5,"pitch":65,"freq":349.23,"name":"F4"},{"beatPos":6.5,"durBeats":1.5,"pitch":65,"freq":349.23,"name":"F4"},{"beatPos":8.0,"durBeats":1.0,"pitch":65,"freq":349.23,"name":"F4"}]},{"measure":15,"sig":"10/4","beats":10,"denom":4,"notes":[{"beatPos":0.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":1.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":2.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":3.5,"durBeats":1.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":5.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":6.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":7.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":8.5,"durBeats":0.5,"pitch":63,"freq":311.13,"name":"Eb4"},{"beatPos":9.0,"durBeats":1.0,"pitch":65,"freq":349.23,"name":"F4"}]},{"measure":16,"sig":"10/4","beats":10,"denom":4,"notes":[{"beatPos":0.0,"durBeats":1.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":1.5,"durBeats":1.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":3.0,"durBeats":1.5,"pitch":65,"freq":349.23,"name":"F4"},{"beatPos":4.5,"durBeats":1.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":6.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":7.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":8.5,"durBeats":1.5,"pitch":65,"freq":349.23,"name":"F4"}]},{"measure":17,"sig":"11/4","beats":11,"denom":4,"notes":[{"beatPos":0.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":1.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":2.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":3.5,"durBeats":1.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":5.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":6.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":7.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":8.5,"durBeats":1.5,"pitch":63,"freq":311.13,"name":"Eb4"},{"beatPos":10.0,"durBeats":0.5,"pitch":65,"freq":349.23,"name":"F4"},{"beatPos":10.5,"durBeats":0.5,"pitch":65,"freq":349.23,"name":"F4"}]},{"measure":18,"sig":"11/4","beats":11,"denom":4,"notes":[{"beatPos":0.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":1.5,"durBeats":0.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":2.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":3.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":4.0,"durBeats":1.0,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":5.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":6.0,"durBeats":1.0,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":7.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":8.0,"durBeats":1.0,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":9.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":10.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"}]},{"measure":19,"sig":"13/4","beats":13,"denom":4,"notes":[{"beatPos":0.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":1.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":2.0,"durBeats":1.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":3.5,"durBeats":1.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":5.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":6.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":7.0,"durBeats":1.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":8.5,"durBeats":1.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":10.0,"durBeats":1.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":11.5,"durBeats":0.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":12.0,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":12.5,"durBeats":0.5,"pitch":65,"freq":349.23,"name":"F4"}]},{"measure":20,"sig":"13/4","beats":13,"denom":4,"notes":[{"beatPos":0.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":1.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":2.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":3.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":4.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":5.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":6.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":7.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":8.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":9.5,"durBeats":0.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":10.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":11.0,"durBeats":1.0,"pitch":63,"freq":311.13,"name":"Eb4"},{"beatPos":12.0,"durBeats":1.0,"pitch":65,"freq":349.23,"name":"F4"}]},{"measure":21,"sig":"15/4","beats":15,"denom":4,"notes":[{"beatPos":0.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":1.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":3.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":5.0,"durBeats":1.0,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":6.0,"durBeats":1.0,"pitch":65,"freq":349.23,"name":"F4"},{"beatPos":7.5,"durBeats":0.5,"pitch":65,"freq":349.23,"name":"F4"},{"beatPos":9.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":10.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":12.0,"durBeats":1.0,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":13.5,"durBeats":0.5,"pitch":65,"freq":349.23,"name":"F4"},{"beatPos":14.0,"durBeats":0.5,"pitch":65,"freq":349.23,"name":"F4"},{"beatPos":14.5,"durBeats":0.5,"pitch":65,"freq":349.23,"name":"F4"}]},{"measure":22,"sig":"15/4","beats":15,"denom":4,"notes":[{"beatPos":0.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":1.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":2.5,"durBeats":1.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":4.5,"durBeats":1.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":6.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":7.0,"durBeats":1.0,"pitch":63,"freq":311.13,"name":"Eb4"},{"beatPos":8.5,"durBeats":0.5,"pitch":65,"freq":349.23,"name":"F4"},{"beatPos":10.5,"durBeats":1.5,"pitch":65,"freq":349.23,"name":"F4"},{"beatPos":12.5,"durBeats":0.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":13.5,"durBeats":0.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":14.0,"durBeats":1.0,"pitch":65,"freq":349.23,"name":"F4"}]},{"measure":23,"sig":"17/8","beats":17,"denom":8,"notes":[{"beatPos":0.0,"durBeats":3.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":3.0,"durBeats":2.0,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":5.0,"durBeats":3.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":8.0,"durBeats":2.0,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":10.0,"durBeats":3.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":13.0,"durBeats":2.0,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":15.0,"durBeats":2.0,"pitch":61,"freq":277.18,"name":"C#4"}]},{"measure":24,"sig":"17/8","beats":17,"denom":8,"notes":[{"beatPos":0.0,"durBeats":2.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":2.0,"durBeats":3.0,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":5.0,"durBeats":2.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":7.0,"durBeats":3.0,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":10.0,"durBeats":3.0,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":13.0,"durBeats":2.0,"pitch":63,"freq":311.13,"name":"Eb4"},{"beatPos":15.0,"durBeats":2.0,"pitch":63,"freq":311.13,"name":"Eb4"}]},{"measure":25,"sig":"17/8","beats":17,"denom":8,"notes":[{"beatPos":0.0,"durBeats":2.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":2.0,"durBeats":3.0,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":5.0,"durBeats":3.0,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":8.0,"durBeats":2.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":10.0,"durBeats":2.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":12.0,"durBeats":3.0,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":15.0,"durBeats":2.0,"pitch":65,"freq":349.23,"name":"F4"}]},{"measure":26,"sig":"17/4","beats":17,"denom":4,"notes":[{"beatPos":0.0,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":1.0,"durBeats":1.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":2.5,"durBeats":1.0,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":3.5,"durBeats":1.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":5.0,"durBeats":1.5,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":6.5,"durBeats":1.0,"pitch":63,"freq":311.13,"name":"Eb4"},{"beatPos":7.5,"durBeats":1.0,"pitch":63,"freq":311.13,"name":"Eb4"},{"beatPos":8.5,"durBeats":1.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":10.0,"durBeats":1.0,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":11.0,"durBeats":1.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":12.5,"durBeats":1.0,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":13.5,"durBeats":1.5,"pitch":58,"freq":233.08,"name":"Bb3"},{"beatPos":15.0,"durBeats":1.0,"pitch":61,"freq":277.18,"name":"C#4"},{"beatPos":16.0,"durBeats":1.0,"pitch":61,"freq":277.18,"name":"C#4"}]}];
+
+// =====================================================================
+// METERS & PRESETS
+// =====================================================================
+const METERS = [
+  {label:'4/4',  beats:4,  denom:4, defaultPat:[4],         name:'4',         bookRef:'基本'},
+  {label:'3/4',  beats:3,  denom:4, defaultPat:[3],         name:'3',         bookRef:'基本'},
+  {label:'6/8',  beats:6,  denom:8, defaultPat:[3,3],       name:'3+3',       bookRef:'基本'},
+  {label:'5/4',  beats:5,  denom:4, defaultPat:[3,2],       name:'3+2',       bookRef:'Ch.7 Ex.31'},
+  {label:'5/8',  beats:5,  denom:8, defaultPat:[3,2],       name:'3+2',       bookRef:'Ch.7 Ex.32'},
+  {label:'7/4',  beats:7,  denom:4, defaultPat:[4,3],       name:'4+3',       bookRef:'Ch.8 Ex.48'},
+  {label:'7/8',  beats:7,  denom:8, defaultPat:[4,3],       name:'4+3',       bookRef:'Ch.8'},
+  {label:'9/4',  beats:9,  denom:4, defaultPat:[5,4],       name:'5+4',       bookRef:'Ch.9 Ex.71'},
+  {label:'9/8',  beats:9,  denom:8, defaultPat:[2,2,2,3],   name:'2+2+2+3',   bookRef:'Ch.9 Ex.66'},
+  {label:'10/4', beats:10, denom:4, defaultPat:[6,4],       name:'6+4',       bookRef:'Ch.10'},
+  {label:'11/4', beats:11, denom:4, defaultPat:[6,5],       name:'6+5',       bookRef:'Ch.11'},
+  {label:'11/8', beats:11, denom:8, defaultPat:[2,2,3,2,2], name:'2+2+3+2+2', bookRef:'Ch.11'},
+  {label:'13/4', beats:13, denom:4, defaultPat:[5,8],       name:'5+8',       bookRef:'Ch.12'},
+  {label:'13/8', beats:13, denom:8, defaultPat:[3,3,3,2,2], name:'3+3+3+2+2', bookRef:'Ch.12'},
+  {label:'15/4', beats:15, denom:4, defaultPat:[4,4,7],     name:'4+4+7',     bookRef:'Ch.13'},
+  {label:'15/8', beats:15, denom:8, defaultPat:[4,4,4,3],   name:'4+4+4+3',   bookRef:'Ch.13'},
+  {label:'17/4', beats:17, denom:4, defaultPat:[6,6,5],     name:'6+6+5',     bookRef:'Ch.13 Ex.96A'},
+  {label:'17/8', beats:17, denom:8, defaultPat:[6,6,5],     name:'6+6+5',     bookRef:'Ch.13 Ex.95'},
+];
+
+const PRESET_PATTERNS = {
+  '4/4':[{name:'基本',accents:[2,0,1,0]}],
+  '3/4':[{name:'基本',accents:[2,0,0]}],
+  '6/8':[{name:'3+3 基本',accents:[2,0,0,1,0,0]},{name:'2+2+2 ヘミオラ',accents:[2,0,1,0,1,0]},{name:'6均等',accents:[1,1,1,1,1,1]}],
+  '5/4':[{name:'3+2 (Ex.31)',accents:[2,0,0,1,0]},{name:'2+3 (Ex.32)',accents:[2,0,1,0,0]},{name:'5均等',accents:[1,1,1,1,1]}],
+  '5/8':[{name:'3+2',accents:[2,0,0,1,0]},{name:'2+3',accents:[2,0,1,0,0]}],
+  '7/4':[{name:'4+3 (Ex.48)',accents:[2,0,0,0,1,0,0]},{name:'3+4 (Ex.54)',accents:[2,0,0,1,0,0,0]},{name:'2+2+3',accents:[2,0,1,0,1,0,0]},{name:'3+2+2',accents:[2,0,0,1,0,1,0]},{name:'Dotted♩ (Ex.51)',accents:[2,0,0,1,0,0,1]}],
+  '7/8':[{name:'4+3',accents:[2,0,0,0,1,0,0]},{name:'3+4',accents:[2,0,0,1,0,0,0]},{name:'2+2+3',accents:[2,0,1,0,1,0,0]}],
+  '9/4':[{name:'5+4 (Ex.71)',accents:[2,0,0,0,0,1,0,0,0]},{name:'4+5',accents:[2,0,0,0,1,0,0,0,0]},{name:'3+3+3',accents:[2,0,0,1,0,0,1,0,0]}],
+  '9/8':[{name:'2+2+2+3 (Ex.66)',accents:[2,0,1,0,1,0,1,0,0]},{name:'3+3+3',accents:[2,0,0,1,0,0,1,0,0]},{name:'Balkan',accents:[2,0,1,0,1,0,0,1,0]}],
+  '10/4':[{name:'6+4 (Ex.75)',accents:[2,0,0,0,0,0,1,0,0,0]},{name:'5+5',accents:[2,0,0,0,0,1,0,0,0,0]},{name:'3+3+4',accents:[2,0,0,1,0,0,1,0,0,0]}],
+  '11/4':[{name:'6+5 (Ex.80)',accents:[2,0,0,0,0,0,1,0,0,0,0]},{name:'4+4+3 (Ex.82)',accents:[2,0,0,0,1,0,0,0,1,0,0]},{name:'5+6',accents:[2,0,0,0,0,1,0,0,0,0,0]}],
+  '11/8':[{name:'2+2+3+2+2 (Ex.77)',accents:[2,0,1,0,1,0,0,1,0,1,0]},{name:'4+3+4 (Ex.79)',accents:[2,0,0,0,1,0,0,1,0,0,0]},{name:'4+4+3',accents:[2,0,0,0,1,0,0,0,1,0,0]}],
+  '13/4':[{name:'5+8 (Ex.88)',accents:[2,0,0,0,0,1,0,0,0,0,0,0,0]},{name:'4+4+5',accents:[2,0,0,0,1,0,0,0,1,0,0,0,0]},{name:'6+7',accents:[2,0,0,0,0,0,1,0,0,0,0,0,0]}],
+  '13/8':[{name:'3+3+3+2+2 (Ex.87)',accents:[2,0,0,1,0,0,1,0,0,1,0,1,0]},{name:'4+4+5',accents:[2,0,0,0,1,0,0,0,1,0,0,0,0]}],
+  '15/4':[{name:'4+4+7 (Ex.90)',accents:[2,0,0,0,1,0,0,0,1,0,0,0,0,0,0]},{name:'8+7 (Ex.90A)',accents:[2,0,0,0,0,0,0,0,1,0,0,0,0,0,0]},{name:'5+5+5',accents:[2,0,0,0,0,1,0,0,0,0,1,0,0,0,0]}],
+  '15/8':[{name:'4+4+4+3 (Ex.91)',accents:[2,0,0,0,1,0,0,0,1,0,0,0,1,0,0]},{name:'5+5+5',accents:[2,0,0,0,0,1,0,0,0,0,1,0,0,0,0]}],
+  '17/4':[{name:'6+6+5 (Ex.96A)',accents:[2,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0]},{name:'5+5+7',accents:[2,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0]},{name:'5+7+5',accents:[2,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0]},{name:'4+4+4+5',accents:[2,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0]},{name:'8+9',accents:[2,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0]}],
+  '17/8':[{name:'6+6+5 (Ex.95)',accents:[2,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0]},{name:'5+5+7',accents:[2,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0]},{name:'6+5+6 (Ex.96A)',accents:[2,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0]},{name:'4+4+4+5',accents:[2,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0]}],
+};
+
+// =====================================================================
+// STATE
+// =====================================================================
+let curMeter = METERS[5]; // 7/4 default (matches score)
+let bpm = 100;
+let isPlaying = false;
+let audioCtx = null;
+let nextNoteTime = 0;
+let curBeat = 0;
+let timerID = null;
+let scheduled = [];
+let tapArr = [];
+let lastActiveBeat = -1;
+let beatAccents = [];
+let activePresetIdx = 0;
+
+// Bass state
+let bassEnabled = false;
+let bassMode = 'single';    // 'single' | 'loop' | 'seq'
+let selectedMeasureIdx = 0; // 0-based index into SCORE_MEASURES
+let seqMeasureIdx = 0;      // current position in seq mode
+let waveType = 'sine';
+let bassVolume = 0.6;
+let bassNotesScheduled = [];  // {freq, time, dur}
+let measureBeatOffset = 0;    // accumulated beat time within current measure
+let currentMeasureInPlayback = 0; // which measure index is currently playing
+
+// =====================================================================
+// AUDIO
+// =====================================================================
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function playClick(time, level) {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  if (level===2)      { osc.frequency.value=1320; gain.gain.value=0.65; }
+  else if (level===1) { osc.frequency.value=880;  gain.gain.value=0.42; }
+  else                { osc.frequency.value=600;  gain.gain.value=0.26; }
+  const dur = level===2 ? 0.10 : 0.08;
+  gain.gain.exponentialRampToValueAtTime(0.001, time+dur);
+  osc.start(time); osc.stop(time+dur+0.01);
+}
+
+function playBassNote(freq, startTime, durSec) {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  const filt = audioCtx.createBiquadFilter();
+  osc.type = waveType;
+  osc.frequency.value = freq;
+  filt.type = 'lowpass';
+  filt.frequency.value = 1200;
+  osc.connect(filt); filt.connect(gain); gain.connect(audioCtx.destination);
+  const vol = bassVolume;
+  gain.gain.setValueAtTime(0, startTime);
+  gain.gain.linearRampToValueAtTime(vol, startTime + 0.015);
+  const releaseStart = Math.max(startTime + 0.02, startTime + durSec - 0.04);
+  gain.gain.setValueAtTime(vol, releaseStart);
+  gain.gain.exponentialRampToValueAtTime(0.001, startTime + durSec);
+  osc.start(startTime);
+  osc.stop(startTime + durSec + 0.01);
+}
+
+function getAccentType(beat) {
+  return beatAccents[beat] !== undefined ? beatAccents[beat] : 0;
+}
+
+function secondsPerBeat() {
+  return (60 / bpm) * (4 / curMeter.denom);
+}
+
+// Get which score measure to play. Returns SCORE_MEASURES entry or null.
+function getActiveMeasure() {
+  if (bassMode === 'single' || bassMode === 'loop') {
+    return SCORE_MEASURES[selectedMeasureIdx];
+  } else {
+    // seq: currentMeasureInPlayback is managed during playback
+    return SCORE_MEASURES[seqMeasureIdx];
+  }
+}
+
+// Schedule all bass notes for a measure starting at measureStartTime
+// beatDuration = seconds per beat (of the METRONOME meter, not necessarily the score meter)
+function scheduleBassForMeasure(measureData, measureStartTime, metBeatSec) {
+  if (!measureData || measureData.notes.length === 0) return;
+  // Use the score measure's own denom to convert beatPos to seconds
+  // The metronome BPM controls overall tempo; both use the same quarter-note as reference
+  const scoreBeatSec = (60 / bpm) * (4 / measureData.denom);
+  for (const note of measureData.notes) {
+    const noteStart = measureStartTime + note.beatPos * scoreBeatSec;
+    const noteDur = Math.max(0.05, note.durBeats * scoreBeatSec * 0.92); // slight staccato
+    playBassNote(note.freq, noteStart, noteDur);
+  }
+}
+
+// =====================================================================
+// SCHEDULER
+// =====================================================================
+// We schedule beat by beat (metronome), and at the START of each measure
+// we also schedule all bass notes for that measure.
+
+let measureStartBeat = 0; // which beat (absolute) starts a new measure
+let measureStartTime = 0; // audio time when current measure started
+
+function scheduler() {
+  while (nextNoteTime < audioCtx.currentTime + 0.12) {
+    const beat = curBeat % curMeter.beats;
+
+    // --- Metronome click ---
+    const level = getAccentType(beat);
+    playClick(nextNoteTime, level);
+    scheduled.push({ beat, time: nextNoteTime });
+
+    // --- Bass: schedule at start of each measure ---
+    if (beat === 0 && bassEnabled) {
+      measureStartTime = nextNoteTime;
+      let mData = null;
+      if (bassMode === 'single') {
+        mData = SCORE_MEASURES[selectedMeasureIdx];
+      } else if (bassMode === 'loop') {
+        mData = SCORE_MEASURES[selectedMeasureIdx];
+      } else if (bassMode === 'seq') {
+        mData = SCORE_MEASURES[seqMeasureIdx];
+        // advance seq index for next measure
+        seqMeasureIdx = (seqMeasureIdx + 1) % SCORE_MEASURES.length;
+      }
+      if (mData) {
+        scheduleBassForMeasure(mData, nextNoteTime, secondsPerBeat());
+        // track which measure is playing for UI
+        const playingIdx = bassMode === 'seq'
+          ? ((seqMeasureIdx - 1 + SCORE_MEASURES.length) % SCORE_MEASURES.length)
+          : selectedMeasureIdx;
+        scheduled.push({ type: 'measure', idx: playingIdx, time: nextNoteTime });
+      }
+    }
+
+    nextNoteTime += secondsPerBeat();
+    curBeat++;
+  }
+  timerID = setTimeout(scheduler, 25);
+}
+
+// =====================================================================
+// ANIMATION
+// =====================================================================
+let subTA = null, subTB = null;
+
+function animFrame() {
+  if (!isPlaying) return;
+  const now = audioCtx.currentTime;
+  while (scheduled.length && scheduled[0].time <= now + 0.025) {
+    const ev = scheduled.shift();
+    if (ev.type === 'measure') {
+      updateMeasureUI(ev.idx);
+    } else {
+      flashBeat(ev.beat);
+    }
+  }
+  requestAnimationFrame(animFrame);
+}
+
+function flashBeat(beat) {
+  if (lastActiveBeat >= 0) {
+    const prev = document.getElementById('be_'+lastActiveBeat);
+    if (prev) prev.classList.remove('active');
+  }
+  const cur = document.getElementById('be_'+beat);
+  if (cur) {
+    cur.classList.add('active');
+    cur.classList.remove('pulse-anim');
+    void cur.offsetWidth;
+    cur.classList.add('pulse-anim');
+  }
+  lastActiveBeat = beat;
+  document.getElementById('curBeatDisp').textContent = beat+1;
+
+  const spb = secondsPerBeat() * 1000;
+  clearTimeout(subTA); clearTimeout(subTB);
+  const s1 = document.getElementById('sd_'+(beat*2));
+  const s2 = document.getElementById('sd_'+(beat*2+1));
+  if (s1) s1.classList.add('on');
+  subTA = setTimeout(()=>{ if(s1) s1.classList.remove('on'); if(s2) s2.classList.add('on'); }, spb*0.5);
+  subTB = setTimeout(()=>{ if(s2) s2.classList.remove('on'); }, spb*0.94);
+}
+
+function updateMeasureUI(idx) {
+  currentMeasureInPlayback = idx;
+  document.getElementById('measureDisp').textContent = 'M' + SCORE_MEASURES[idx].measure;
+  // Update chip highlight
+  document.querySelectorAll('.measure-chip').forEach((c,i) => {
+    c.classList.remove('playing-now');
+    if (i === idx) c.classList.add('playing-now');
+  });
+}
+
+// =====================================================================
+// CONTROLS
+// =====================================================================
+function togglePlay() {
+  initAudio();
+  if (isPlaying) {
+    isPlaying = false;
+    clearTimeout(timerID);
+    scheduled = [];
+    document.getElementById('playBtn').textContent = '▶ 開始';
+    document.getElementById('playBtn').className = 'play-btn';
+    document.getElementById('curBeatDisp').textContent = '—';
+    document.getElementById('measureDisp').textContent = '—';
+    document.querySelectorAll('.measure-chip').forEach(c => c.classList.remove('playing-now'));
+    if (lastActiveBeat >= 0) {
+      const el = document.getElementById('be_'+lastActiveBeat);
+      if (el) el.classList.remove('active');
+      lastActiveBeat = -1;
+    }
+  } else {
+    isPlaying = true;
+    curBeat = 0;
+    seqMeasureIdx = 0;
+    nextNoteTime = audioCtx.currentTime + 0.05;
+    scheduled = [];
+    document.getElementById('playBtn').textContent = '■ 停止';
+    document.getElementById('playBtn').className = 'play-btn playing';
+    scheduler();
+    animFrame();
+  }
+}
+
+function tapTempo() {
+  const now = Date.now();
+  tapArr.push(now);
+  if (tapArr.length > 8) tapArr = tapArr.slice(-8);
+  if (tapArr.length >= 2) {
+    const recent = tapArr.slice(-4);
+    const ivs = [];
+    for (let i=1;i<recent.length;i++) ivs.push(recent[i]-recent[i-1]);
+    const avg = ivs.reduce((a,b)=>a+b,0)/ivs.length;
+    setBpm(Math.max(40,Math.min(240,Math.round(60000/avg))));
+  }
+}
+
+function setBpm(v) {
+  bpm = v;
+  document.getElementById('bpmSlider').value = v;
+  document.getElementById('bpmNum').textContent = v;
+}
+
+function toggleBass() {
+  bassEnabled = document.getElementById('bassToggle').checked;
+  updateBassInfo();
+}
+
+function setBassMode(mode) {
+  bassMode = mode;
+  ['single','loop','seq'].forEach(m => {
+    document.getElementById('bm_'+m).classList.toggle('active', m===mode);
+  });
+  if (mode === 'seq') seqMeasureIdx = 0;
+  updateBassInfo();
+}
+
+function selectMeasure(idx) {
+  selectedMeasureIdx = idx;
+  document.querySelectorAll('.measure-chip').forEach((c,i) => {
+    c.classList.toggle('active', i===idx);
+    if (i === currentMeasureInPlayback && isPlaying) c.classList.add('playing-now');
+  });
+  updateBassInfo();
+}
+
+function setWave(type) {
+  waveType = type;
+  ['sine','triangle','sawtooth','square'].forEach(t => {
+    document.getElementById('wv_'+t).classList.toggle('active', t===type);
+  });
+}
+
+function updateBassInfo() {
+  const m = SCORE_MEASURES[selectedMeasureIdx];
+  const modeStr = {single:'単一小節ループ', loop:'同小節ループ', seq:'全小節順番再生'}[bassMode];
+  let status = bassEnabled ? '<span>ON</span>' : 'OFF';
+  document.getElementById('bassInfo').innerHTML =
+    `状態: ${status} &nbsp;|&nbsp; モード: <span>${modeStr}</span><br>` +
+    `選択中: <span>M${m.measure} [${m.sig}]</span> &nbsp;|&nbsp; ` +
+    `ノート数: <span>${m.notes.length}</span>`;
+}
+
+// =====================================================================
+// METER & ACCENT EDITOR
+// =====================================================================
+function buildMeterGrid() {
+  const g = document.getElementById('meterGrid');
+  g.innerHTML = '';
+  METERS.forEach((m,i) => {
+    const b = document.createElement('div');
+    b.className = 'meter-btn'+(m.label===curMeter.label?' active':'');
+    b.innerHTML = `<div class="meter-name">${m.label}</div><div class="meter-pat">${m.name}</div>`;
+    b.onclick = () => selectMeter(i);
+    g.appendChild(b);
+  });
+}
+
+function selectMeter(i) {
+  curMeter = METERS[i];
+  curBeat = 0;
+  activePresetIdx = 0;
+  const presets = PRESET_PATTERNS[curMeter.label]||[];
+  if (presets.length) {
+    beatAccents = [...presets[0].accents].slice(0,curMeter.beats);
+    while (beatAccents.length<curMeter.beats) beatAccents.push(0);
+  } else {
+    initAccentsFromPattern(curMeter.defaultPat);
+  }
+  renderBeatEditor(); renderSubdots(); renderPresetChips(); buildMeterGrid(); updateCycleHint();
+  document.getElementById('meterDisp').textContent = curMeter.label;
+}
+
+function initAccentsFromPattern(pat) {
+  beatAccents = new Array(curMeter.beats).fill(0);
+  let pos = 0;
+  pat.forEach((len,gi) => { beatAccents[pos] = gi===0?2:1; pos+=len; });
+}
+
+function loadPreset(idx) {
+  const presets = PRESET_PATTERNS[curMeter.label]||[];
+  if (!presets[idx]) return;
+  activePresetIdx = idx;
+  beatAccents = [...presets[idx].accents].slice(0,curMeter.beats);
+  while (beatAccents.length<curMeter.beats) beatAccents.push(0);
+  renderBeatEditor(); renderPresetChips(); updateCycleHint();
+}
+
+function renderBeatEditor() {
+  const el = document.getElementById('beatEditor');
+  el.innerHTML = '';
+  const n = curMeter.beats;
+  const sz = n<=9?40:n<=13?34:n<=15?30:26;
+  const fs = n<=9?13:n<=13?11:10;
+  const groupBoundaries = new Set();
+  let pos = 0;
+  curMeter.defaultPat.forEach((len,gi)=>{ if(gi>0) groupBoundaries.add(pos); pos+=len; });
+  for (let i=0;i<n;i++) {
+    if (groupBoundaries.has(i)) {
+      const sep = document.createElement('div');
+      sep.className = 'beat-sep-v'; sep.style.height = sz+'px';
+      el.appendChild(sep);
+    }
+    const lv = beatAccents[i];
+    const cls = lv===2?'strong':lv===1?'mid':'normal';
+    const wrap = document.createElement('div');
+    wrap.className = 'be-beat '+cls; wrap.id = 'be_'+i;
+    wrap.innerHTML = `<div class="be-circle" style="width:${sz}px;height:${sz}px;font-size:${fs}px">${i+1}</div><div class="be-num">${['○','◉','●'][lv]}</div>`;
+    wrap.onclick = () => cycleBeat(i);
+    el.appendChild(wrap);
+  }
+}
+
+function renderPresetChips() {
+  const presets = PRESET_PATTERNS[curMeter.label]||[];
+  const el = document.getElementById('presetChips');
+  el.innerHTML = '';
+  presets.forEach((p,i) => {
+    const ch = document.createElement('div');
+    ch.className = 'preset-chip'+(i===activePresetIdx?' active':'');
+    ch.textContent = p.name;
+    ch.onclick = () => loadPreset(i);
+    el.appendChild(ch);
+  });
+}
+
+function renderSubdots() {
+  const sr = document.getElementById('subRow');
+  sr.innerHTML = '';
+  for (let i=0;i<curMeter.beats*2;i++) {
+    const s = document.createElement('div');
+    s.className='sub-dot'; s.id='sd_'+i;
+    sr.appendChild(s);
+  }
+}
+
+function buildBassMeasures() {
+  const el = document.getElementById('bassMeasures');
+  el.innerHTML = '';
+  SCORE_MEASURES.forEach((m,i) => {
+    const c = document.createElement('div');
+    c.className = 'measure-chip'+(i===selectedMeasureIdx?' active':'');
+    c.id = 'mc_'+i;
+    c.innerHTML = `<div class="mc-num">M${m.measure}</div><div class="mc-sig">${m.sig}</div>`;
+    c.onclick = () => selectMeasure(i);
+    el.appendChild(c);
+  });
+}
+
+function cycleBeat(idx) {
+  beatAccents[idx] = (beatAccents[idx]+1)%3;
+  activePresetIdx = -1;
+  renderBeatEditor(); renderPresetChips(); updateCycleHint();
+}
+
+function updateCycleHint() {
+  const groups=[]; let cur=[];
+  beatAccents.forEach((lv,i) => {
+    if (i>0&&(lv===2||lv===1)){groups.push(cur.length);cur=[i];}else{cur.push(i);}
+  });
+  groups.push(cur.length);
+  document.getElementById('cycleHint').innerHTML =
+    `現在のグループ: <span>${groups.join(' + ')}</span> &nbsp;|&nbsp; <span>${curMeter.bookRef}</span>`;
+}
+
+// =====================================================================
+// EVENT LISTENERS
+// =====================================================================
+document.getElementById('bpmSlider').addEventListener('input', function() {
+  setBpm(parseInt(this.value));
+});
+document.getElementById('bassVol').addEventListener('input', function() {
+  bassVolume = parseInt(this.value)/100;
+  document.getElementById('bassVolNum').textContent = this.value;
+});
+
+// =====================================================================
+// STARTUP
+// =====================================================================
+initAccentsFromPattern(curMeter.defaultPat);
+const initPresets = PRESET_PATTERNS[curMeter.label]||[];
+if (initPresets.length) {
+  beatAccents = [...initPresets[0].accents].slice(0,curMeter.beats);
+  while (beatAccents.length<curMeter.beats) beatAccents.push(0);
+}
+buildMeterGrid();
+renderBeatEditor();
+renderSubdots();
+renderPresetChips();
+buildBassMeasures();
+updateCycleHint();
+updateBassInfo();
+document.getElementById('meterDisp').textContent = curMeter.label;
+document.getElementById('measureDisp').textContent = '—';
+</script>
+</body>
+</html>
